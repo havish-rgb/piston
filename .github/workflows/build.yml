@@ -1,0 +1,29 @@
+name: Build JARVIS APK
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find project
+        run: |
+          ls -la
+          mkdir -p proj
+          for z in *.zip; do [ -f "$z" ] && unzip -o "$z" -d proj; done
+          P=$(dirname "$(find . -name settings.gradle.kts -not -path './.git/*' | head -n1)")
+          echo "Project folder: $P"
+          [ -f "$P/settings.gradle.kts" ] || { echo "No Android project found"; exit 1; }
+          echo "PROJ=$P" >> "$GITHUB_ENV"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+      - run: gradle assembleDebug --no-daemon
+        working-directory: ${{ env.PROJ }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-apk
+          path: ${{ env.PROJ }}/app/build/outputs/apk/debug/app-debug.apk
